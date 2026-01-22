@@ -20,6 +20,9 @@ type ApiExtractor struct {
 }
 
 func (p *Provider) DeployHttpProxy(opts *sdk.FunctionOpts) (string, error) {
+	// 保存 secretKey 到 provider
+	p.secretKey = opts.SecretKey
+
 	if err := p.createNamespace(opts.Namespace); err != nil {
 		return "", err
 	}
@@ -81,9 +84,11 @@ func (p *Provider) createHttpFunction(namespace, functionName string) error {
 	r.FunctionName = common.StringPtr(functionName)
 	r.Code = &scf.Code{ZipFile: common.StringPtr(function.TencentHttpCodeZip)}
 	r.Handler = common.StringPtr("index.handler")
-	r.MemorySize = common.Int64Ptr(128)
-	r.Timeout = common.Int64Ptr(10)
+	r.MemorySize = common.Int64Ptr(128)      // 保持不变
+	r.Timeout = common.Int64Ptr(120)         // 10 → 120
 	r.Runtime = common.StringPtr("Python3.6")
+	// TODO: 腾讯云暂时不支持环境变量，需要在代码中硬编码暗号或使用其他方式
+	// r.Environment = &scf.Environment{...}
 
 	_, err := p.fclient.CreateFunction(r)
 	if err != nil {

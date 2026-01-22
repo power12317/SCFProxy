@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	Namespace = "scfproxy"
+	Namespace = "scf"
 
 	HTTPFunctionName = "scf_http"
 	HTTPTriggerName  = "http_trigger"

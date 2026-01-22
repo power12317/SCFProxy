@@ -13,11 +13,38 @@ Go to the [Release](https://github.com/shimmeris/SCFProxy/releases/) page to dow
 
 ## Configuration credentials
 
-SCFProxy will generate a `sdk.toml` configuration file in the `~/.config/scfproxy` directory to configure the credential
+SCFProxy will generate a `sdk.toml` configuration file in the **`./config/`** directory to configure the credential
 of cloud providers.
+
+All configuration files (including `sdk.toml`, `http.json`, `socks.json`, `reverse.json`, `scfproxy.cer`, and `scfproxy.key`)
+are now stored in the `./config/` subdirectory of the program's current directory, making it easy to share the entire folder with others.
 
 This file will be loaded by default when `deploy/clear` command is run, or can be specified with the `-c config`
 parameter.
+
+### Global Secret Key
+
+The `sdk.toml` file includes a `[global]` section with a `secret_key` field for access control:
+
+```toml
+[global]
+# Global secret key for verifying cloud function requests
+# Leave empty to disable verification (not recommended)
+secret_key = "your_secret_key_here"
+```
+
+When a secret key is configured:
+- It will be passed to cloud functions as an environment variable (`SCF_SECRET_KEY`)
+- All proxy requests must include the `X-SCF-Secret-Key` header with the matching secret key
+- Cloud functions will return `403 Forbidden` if the secret key doesn't match
+
+**Note**: This feature is supported on Alibaba Cloud and AWS. Tencent Cloud currently has SDK limitations that prevent
+environment variable configuration.
+
+**Benefits**:
+- Unified access control across all cloud functions
+- Easy to share with others - just copy the entire program folder
+- Prevents unauthorized access to your cloud functions
 
 ## Supported Providers
 
@@ -125,12 +152,12 @@ The result of the above command is
 1. Deploy the http proxy on `ap-northeast-1`, `eu-central-1`, ` eu-west-1`, `cn-shanghai` regions of `alibaba`
 2. Deploy the http proxy on `ap-beijing` region of `tencent`
 
-All HTTP proxies deployed through this project will be saved in `~/.config/scfproxy/http.json` for loading when running
+All HTTP proxies deployed through this project will be saved in `./config/http.json` for loading when running
 the http proxy.
 
 ### Run
 
-The first run will generate `scfproxy.cer` and `scfproxy.key` certificates in `~/.config/scfproxy/cert` directory, which
+The first run will generate `scfproxy.cer` and `scfproxy.key` certificates in the `./config/` directory, which
 need to be imported into the system certificate and trusted before you can proxy
 https requests.
 
@@ -141,7 +168,7 @@ scfproxy http -l address [-c cert_path] [-k key_path]
 `-l address` is in the format `ip:port`, you can omit the ip and use the `:port` form for deployment, which is
 equivalent to `0.0.0.0:port`
 
-Running HTTP proxy will load the records in `~/.config/scfproxy/http.json`, and if there are multiple deployed cloud
+Running HTTP proxy will load the records in `./config/http.json`, and if there are multiple deployed cloud
 functions (regardless of provider), each HTTP request will randomly pick one of them to proxy.
 
 #### Use effect
@@ -179,8 +206,8 @@ scfproxy socks -l socks_port -s scf_port -h address [--auth user:pass] [-c provi
 
 `--auth [user:pass]` for specifying socks authentication information, no authentication by default
 
-The socks command needs to load `sdk.toml` for invoking functions and `~/.config/scfproxy/socks.json` for determining
-the provider and region of the functions that can be invoked after deployment, so you need to copy the above two files
+The socks command needs to load `./config/sdk.toml` for invoking functions and `./config/socks.json` for determining
+the provider and region of the functions that can be invoked after deployment, so you need to copy the `./config/` folder
 to the corresponding location in the vps to run.
 
 If there are multiple deployed cloud functions (regardless of provider), the socks proxy will trigger the execution of

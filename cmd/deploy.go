@@ -30,7 +30,8 @@ var deployCmd = &cobra.Command{
 		module := args[0]
 		switch module {
 		case "http":
-			return deployHttp(providers)
+			configPath, _ := cmd.Flags().GetString("config")
+			return deployHttp(providers, configPath)
 		case "socks":
 			return deploySocks(providers)
 		case "reverse":
@@ -168,11 +169,18 @@ func removeDuplicate(data []string) []string {
 	return result
 }
 
-func deployHttp(providers []sdk.Provider) error {
+func deployHttp(providers []sdk.Provider, configPath string) error {
 	conf, err := config.LoadHttpConfig()
 	if err != nil {
 		return err
 	}
+
+	// 加载全局配置
+	providerConfig, err := config.LoadProviderConfig(configPath)
+	if err != nil {
+		return err
+	}
+	secretKey := providerConfig.GetSecretKey()
 
 	var wg sync.WaitGroup
 	wg.Add(len(providers))
@@ -189,7 +197,7 @@ func deployHttp(providers []sdk.Provider) error {
 
 			onlyTrigger := false
 			if record, ok := conf.Get(provider, region); ok {
-				if record.Api != "" {
+				if record.Url != "" {
 					logrus.Infof("%s %s has been deployed, pass", provider, region)
 					return
 				}
@@ -201,6 +209,7 @@ func deployHttp(providers []sdk.Provider) error {
 				FunctionName: HTTPFunctionName,
 				TriggerName:  HTTPTriggerName,
 				OnlyTrigger:  onlyTrigger,
+				SecretKey:    secretKey, // 传递全局暗号
 			}
 			api, err := hp.DeployHttpProxy(opts)
 			if err != nil {
@@ -209,7 +218,7 @@ func deployHttp(providers []sdk.Provider) error {
 			}
 
 			logrus.Printf("[success] http proxy deployed in %s.%s", provider, region)
-			conf.Set(provider, region, &config.HttpRecord{Api: api})
+			conf.Set(provider, region, &config.HttpRecord{Port: 0, Url: api})
 		}(p)
 	}
 

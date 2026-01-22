@@ -8,7 +8,8 @@ import (
 )
 
 type HttpRecord struct {
-	Api string
+	Port int    // 保留字段，用于兼容
+	Url  string
 }
 
 type HttpConfig struct {
@@ -58,26 +59,70 @@ func (c *HttpConfig) Save() error {
 }
 
 func (c *HttpConfig) AvailableApis() []string {
-	var apis []string
+	return c.GetAllUrls()
+}
+
+// 新增方法：获取所有URL
+func (c *HttpConfig) GetAllUrls() []string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	var urls []string
 	for _, rmap := range c.Records {
 		for _, record := range rmap {
-			r, ok := interface{}(record).(*HttpRecord)
-			if !ok {
-				return apis
-			}
-			if r.Api != "" {
-				apis = append(apis, r.Api)
+			if record.Url != "" {
+				urls = append(urls, record.Url)
 			}
 		}
 	}
-	return apis
+	return urls
+}
+
+// 获取所有记录（包含端口信息）
+func (c *HttpConfig) GetAllRecords() []*HttpRecord {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	var records []*HttpRecord
+	for _, rmap := range c.Records {
+		for _, record := range rmap {
+			if record.Url != "" {
+				records = append(records, record)
+			}
+		}
+	}
+	return records
+}
+
+// HttpRecordWithInfo 包含完整信息的记录
+type HttpRecordWithInfo struct {
+	Provider string
+	Region   string
+	*HttpRecord
+}
+
+// 获取所有记录（包含 provider、region 和端口信息）
+func (c *HttpConfig) GetAllRecordsWithInfo() []*HttpRecordWithInfo {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	var records []*HttpRecordWithInfo
+	for provider, rmap := range c.Records {
+		for region, record := range rmap {
+			if record.Url != "" {
+				records = append(records, &HttpRecordWithInfo{
+					Provider:   provider,
+					Region:     region,
+					HttpRecord: record,
+				})
+			}
+		}
+	}
+	return records
 }
 
 func (c *HttpConfig) ToDoubleArray() [][]string {
 	data := [][]string{}
 	for provider, rmap := range c.Records {
 		for region, record := range rmap {
-			data = append(data, []string{provider, region, record.Api})
+			data = append(data, []string{provider, region, record.Url})
 		}
 	}
 	return data

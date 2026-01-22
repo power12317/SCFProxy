@@ -10,9 +10,10 @@ import (
 )
 
 type Provider struct {
-	region  string
-	fclient *fcopen.Client
-	runtime *util.RuntimeOptions
+	region    string
+	fclient   *fcopen.Client
+	runtime   *util.RuntimeOptions
+	secretKey string // 全局暗号
 }
 
 func New(accessKeyId, accessKeySecret, accountId, region string) (*Provider, error) {

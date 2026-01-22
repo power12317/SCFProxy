@@ -10,11 +10,12 @@ import (
 )
 
 type Provider struct {
-	fclient *lambda.Client
-	gclient *apigateway.Client
-	region  string
-	roleArn *string
-	ctx     context.Context
+	fclient   *lambda.Client
+	gclient   *apigateway.Client
+	region    string
+	roleArn   *string
+	ctx       context.Context
+	secretKey string // 全局暗号
 }
 
 func New(accessKey, secretKey, region, roleArn string) (*Provider, error) {

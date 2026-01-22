@@ -2,30 +2,27 @@ package config
 
 import (
 	"os"
-	"os/user"
-	"path/filepath"
-
-	"github.com/sirupsen/logrus"
 )
 
 var (
-	configPath         = filepath.Join(userHomeDir(), ".config/scfproxy")
-	CertPath           = filepath.Join(configPath, "cert/scfproxy.cer")
-	KeyPath            = filepath.Join(configPath, "cert/scfproxy.key")
-	HttpProxyPath      = filepath.Join(configPath, "http.json")
-	SocksProxyPath     = filepath.Join(configPath, "socks.json")
-	ReverseProxyPath   = filepath.Join(configPath, "reverse.json")
-	ProviderConfigPath = filepath.Join(configPath, "sdk.toml")
+	// 使用程序当前目录下的 config 目录
+	CertPath           = "config/scfproxy.cer"
+	KeyPath            = "config/scfproxy.key"
+	HttpProxyPath      = "config/http.json"
+	SocksProxyPath     = "config/socks.json"
+	ReverseProxyPath   = "config/reverse.json"
+	ProviderConfigPath = "config/sdk.toml"
 )
 
 func init() {
-	os.MkdirAll(filepath.Join(configPath, "cert"), os.ModePerm)
+	os.MkdirAll("config", os.ModePerm)
 }
 
-func userHomeDir() string {
-	usr, err := user.Current()
+// GetConfigDir 获取配置文件所在目录（程序当前目录/config）
+func GetConfigDir() (string, error) {
+	cwd, err := os.Getwd()
 	if err != nil {
-		logrus.Fatal("Could not get user home directory: %s\n", err)
+		return "", err
 	}
-	return usr.HomeDir
+	return cwd + "/config", nil
 }

@@ -19,9 +19,35 @@ SCFProxy 是一个基于多个云服务商提供的云函数及 API 网关实现
 
 ## 配置凭证
 
-首次运行 `scfproxy` 会在 `~/.config/scfproxy` 目录生成 `sdk.toml` 配置文件，用于配置云厂商的 AccessKey/SecretKey。
+首次运行 `scfproxy` 会在**`./config/`** 目录生成 `sdk.toml` 配置文件，用于配置云厂商的 AccessKey/SecretKey。
+
+所有配置文件（包括 `sdk.toml`、`http.json`、`socks.json`、`reverse.json`、`scfproxy.cer` 和 `scfproxy.key`）
+现在都存储在程序当前目录下的 `./config/` 子目录中，方便与他人分享整个文件夹。
 
 之后运行 `deploy/clear` 命令都将默认读取此文件，也可通过 `-c config` 参数指定。
+
+### 全局暗号
+
+`sdk.toml` 文件包含 `[global]` 部分，其中有 `secret_key` 字段用于访问控制：
+
+```toml
+[global]
+# 全局暗号，用于验证云函数请求
+# 留空则不启用验证（不推荐）
+secret_key = "your_secret_key_here"
+```
+
+配置暗号后：
+- 它将作为环境变量 (`SCF_SECRET_KEY`) 传递给云函数
+- 所有代理请求必须包含匹配的 `X-SCF-Secret-Key` 头
+- 如果暗号不匹配，云函数将返回 `403 Forbidden`
+
+**注意**：此功能在阿里云和 AWS 上支持。腾讯云目前受 SDK 限制，无法配置环境变量。
+
+**优点**：
+- 所有云函数统一访问控制
+- 易于分享 - 只需复制整个程序文件夹
+- 防止未授权访问您的云函数
 
 ## 支持厂商
 
@@ -123,11 +149,11 @@ scfproxy deploy http -p alibaba,tencent -r ap-1,eu-*,cn-shanghai
 1. 在 `alibaba` 上部署 `ap-northeast-1`, `eu-central-1`, ` eu-west-1`, `cn-shanghai` 区域的 http 代理
 2. 在 `tencent` 上部署 `ap-beijing` 区域的 http 代理
 
-所有通过该项目部署的 HTTP 代理将会保存在 `~/.config/scfproxy/http.json` 中，用于运行 http 代理时加载。
+所有通过该项目部署的 HTTP 代理将会保存在 `./config/http.json` 中，用于运行 http 代理时加载。
 
 ### 运行
 
-首次运行会在 `~/.confg/scfproxy/cert` 目录生成 `scfproxy.cer` 及 `scfproxy.key` 证书，需要将其导入系统证书并信任才可以代理
+首次运行会在 `./config/` 目录生成 `scfproxy.cer` 及 `scfproxy.key` 证书，需要将其导入系统证书并信任才可以代理
 https 请求。
 
 ```console
@@ -136,7 +162,7 @@ scfproxy http -l address [-c cert_path] [-k key_path]
 
 `-l address` 格式为 `ip:port`，可省略 ip 使用 `:port` 形式进行部署，效果等同于 `0.0.0.0:port`
 
-HTTP 代理运行将读取 `~/.config/scfproxy/http.json` 中的记录，如果存在多个已部署的云函数（不区分厂商），每个 HTTP
+HTTP 代理运行将读取 `./config/http.json` 中的记录，如果存在多个已部署的云函数（不区分厂商），每个 HTTP
 请求将随机挑选其中的云函数进行代理。
 
 #### 使用效果
@@ -173,8 +199,8 @@ scfproxy socks -l socks_port -s scf_port -h address [--auth user:pass] [-c provi
 
 `--auth [user:pass]` 用于指定 socks 认证信息，默认无认证
 
-socks 命令需要加载 `sdk.toml` 用于触发函数，及部署后生成的 `~/.config/scfproxy/socks.json`
-用于确定可以调用的函数的厂商及地区，因此需要将上述两个文件复制到 vps 对应位置运行。
+socks 命令需要加载 `./config/sdk.toml` 用于触发函数，及部署后生成的 `./config/socks.json`
+用于确定可以调用的函数的厂商及地区，因此需要将 `./config/` 文件夹复制到 vps 对应位置运行。
 
 如果存在多个已部署的云函数（不区分厂商），socks 代理将触发每个云函数的执行，并监听来自他们的连接，之后每个来自客户端的 socks
 连接将随机挑选其中的来自云函数的连接进行代理。

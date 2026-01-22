@@ -73,7 +73,7 @@ func clearHttp(providers []sdk.Provider, completely bool) error {
 			hp := p.(sdk.HttpProxyProvider)
 			provider, region := hp.Name(), hp.Region()
 
-			if record, ok := conf.Get(provider, region); ok && record.Api == "" && !completely {
+			if record, ok := conf.Get(provider, region); ok && record.Url == "" && !completely {
 				logrus.Infof("%s %s trigger has already been cleared", provider, region)
 				return
 			}

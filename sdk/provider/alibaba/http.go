@@ -9,6 +9,9 @@ import (
 )
 
 func (p *Provider) DeployHttpProxy(opts *sdk.FunctionOpts) (string, error) {
+	// 保存 secretKey 到 provider
+	p.secretKey = opts.SecretKey
+
 	if err := p.createService(opts.Namespace); err != nil {
 		return "", err
 	}
@@ -54,10 +57,16 @@ func (p *Provider) createHttpFunction(serviceName, functionName string) error {
 		FunctionName: tea.String(functionName),
 		Runtime:      tea.String("python3.9"),
 		Handler:      tea.String("index.handler"),
-		Timeout:      tea.Int32(10),
-		MemorySize:   tea.Int32(128),
+		Timeout:      tea.Int32(120),                      // 10 → 120
+		MemorySize:   tea.Int32(128),                     // 保持不变
+		Cpu:          tea.Float32(0.05),                  // 新增
+		DiskSize:     tea.Int32(512),                     // 新增
+		InstanceConcurrency: tea.Int32(100),              // 实例并发度：1 → 100
 		Code: &fcopen.Code{
 			ZipFile: tea.String(function.AlibabaHttpCodeZip),
+		},
+		EnvironmentVariables: map[string]*string{
+			"SCF_SECRET_KEY": tea.String(p.secretKey), // 设置环境变量
 		},
 	}
 

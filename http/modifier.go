@@ -7,24 +7,18 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/google/martian/v3"
 	"github.com/sirupsen/logrus"
 )
 
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-
 type ScfModifier struct {
-	apis   []string
-	length int
-	port   string
+	apiUrl    string
+	secretKey string
+	port      string
 }
 
 type httpRequest struct {
@@ -35,15 +29,17 @@ type httpRequest struct {
 }
 
 type httpResponse struct {
-	Url    string            `json:"url"`
-	Code   int               `json:"status_code"`
-	Header map[string]string `json:"headers"`
-	Body   string            `json:"content"`
+	Url    string                 `json:"url"`
+	Code   int                    `json:"status_code"`
+	Header map[string]interface{} `json:"headers"` // 支持字符串和数组
+	Body   string                 `json:"content"`
 }
 
-func NewScfModifier(apis []string, lport string) (*ScfModifier, error) {
-	length := len(apis)
-	return &ScfModifier{apis: apis, length: length, port: lport}, nil
+func NewScfModifier(apiUrl, secretKey string, lport string) (*ScfModifier, error) {
+	if apiUrl == "" {
+		return nil, errors.New("api URL is required")
+	}
+	return &ScfModifier{apiUrl: apiUrl, secretKey: secretKey, port: lport}, nil
 }
 
 func (m *ScfModifier) ModifyRequest(req *http.Request) error {
@@ -78,9 +74,14 @@ func (m *ScfModifier) ModifyRequest(req *http.Request) error {
 		return err
 	}
 
-	scfApi := m.pickRandomApi()
-	logrus.Debugf("%s - %s", req.URL, scfApi)
-	scfReq, err := http.NewRequest("POST", scfApi, bytes.NewReader(data))
+	logrus.Debugf("%s - %s", req.URL, m.apiUrl)
+	scfReq, err := http.NewRequest("POST", m.apiUrl, bytes.NewReader(data))
+
+	// 添加暗号 Header
+	if m.secretKey != "" {
+		scfReq.Header.Set("X-SCF-Secret-Key", m.secretKey)
+	}
+
 	*req = *scfReq
 
 	return nil
@@ -106,7 +107,19 @@ func (m *ScfModifier) ModifyResponse(res *http.Response) error {
 
 	res.Header = http.Header{}
 	for k, v := range hr.Header {
-		res.Header.Set(k, v)
+		// 检查值类型，可能是字符串或数组
+		switch val := v.(type) {
+		case string:
+			// 单个值，使用 Set
+			res.Header.Set(k, val)
+		case []interface{}:
+			// 多个值（如多个 set-cookie），逐个添加
+			for _, item := range val {
+				if strItem, ok := item.(string); ok {
+					res.Header.Add(k, strItem)
+				}
+			}
+		}
 	}
 
 	body, err := base64.StdEncoding.DecodeString(hr.Body)
@@ -118,9 +131,4 @@ func (m *ScfModifier) ModifyResponse(res *http.Response) error {
 	res.ContentLength = int64(len(body))
 
 	return nil
-}
-
-func (m *ScfModifier) pickRandomApi() string {
-	n := rand.Intn(m.length)
-	return m.apis[n]
 }

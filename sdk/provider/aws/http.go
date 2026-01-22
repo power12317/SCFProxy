@@ -12,6 +12,9 @@ import (
 )
 
 func (p *Provider) DeployHttpProxy(opts *sdk.FunctionOpts) (string, error) {
+	// 保存 secretKey 到 provider
+	p.secretKey = opts.SecretKey
+
 	if !opts.OnlyTrigger {
 		if err := p.createHttpFunction(opts.FunctionName); err != nil {
 			return "", err
@@ -46,12 +49,17 @@ func (p *Provider) createHttpFunction(functionName string) error {
 		FunctionName:  aws.String(functionName),
 		Code:          &types.FunctionCode{ZipFile: []byte(function.AwsHttpCodeZip)},
 		Handler:       aws.String("index.handler"),
-		MemorySize:    aws.Int32(128),
+		MemorySize:    aws.Int32(128),              // 保持不变
 		Architectures: []types.Architecture{types.ArchitectureArm64},
-		Timeout:       aws.Int32(10),
+		Timeout:       aws.Int32(120),              // 10 → 120
 		Runtime:       types.RuntimePython39,
 		PackageType:   types.PackageTypeZip,
 		Role:          p.roleArn,
+		Environment: &types.Environment{
+			Variables: map[string]string{
+				"SCF_SECRET_KEY": p.secretKey, // 设置环境变量
+			},
+		},
 	}
 
 	_, err := p.fclient.CreateFunction(p.ctx, input)

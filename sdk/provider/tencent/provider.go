@@ -8,9 +8,10 @@ import (
 )
 
 type Provider struct {
-	region  string
-	fclient *scf.Client
-	gclient *apigateway.Client
+	region    string
+	fclient   *scf.Client
+	gclient   *apigateway.Client
+	secretKey string // 全局暗号
 }
 
 func New(secretId, secretKey, region string) (*Provider, error) {

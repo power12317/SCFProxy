@@ -5,6 +5,7 @@ type FunctionOpts struct {
 	FunctionName string
 	TriggerName  string
 	OnlyTrigger  bool
+	SecretKey    string // 全局暗号
 }
 
 type ReverseProxyOpts struct {

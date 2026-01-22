@@ -6,9 +6,14 @@ import (
 	"github.com/pelletier/go-toml"
 )
 
-const ProviderConfigContent = `[alibaba]
+const ProviderConfigContent = `[global]
+# 全局暗号，用于验证云函数请求
+# 留空则不启用验证（不推荐）
+secret_key = ""
+
+[alibaba]
 AccessKeyId = ""
-AccessKeySecret = "" 
+AccessKeySecret = ""
 AccountId = ""
 
 [aws]
@@ -20,11 +25,11 @@ RoleArn = ""
 # Named SecretId in tencent
 AccessKeyId = ""
 # Named SecretKey in tencent
-AccessKeySecret = "" 
+AccessKeySecret = ""
 
 [huawei]
 AccessKeyId = ""
-AccessKeySecret = "" 
+AccessKeySecret = ""
 `
 
 type Credential struct {
@@ -39,9 +44,14 @@ func (c Credential) isSet() bool {
 }
 
 type ProviderConfig struct {
-	Alibaba *Credential
-	Tencent *Credential
-	Aws     *Credential
+	Global   *GlobalConfig
+	Alibaba  *Credential
+	Tencent  *Credential
+	Aws      *Credential
+}
+
+type GlobalConfig struct {
+	SecretKey string
 }
 
 func LoadProviderConfig(path string) (*ProviderConfig, error) {
@@ -76,4 +86,12 @@ func (c *ProviderConfig) IsSet(provider string) bool {
 		return false
 	}
 	return cred.isSet()
+}
+
+// GetSecretKey 获取全局暗号
+func (c *ProviderConfig) GetSecretKey() string {
+	if c.Global == nil {
+		return ""
+	}
+	return c.Global.SecretKey
 }

@@ -17,10 +17,15 @@ type Options struct {
 	ListenAddr string
 	CertPath   string
 	KeyPath    string
-	Apis       []string
+	ApiUrl     string
+	SecretKey  string // 全局暗号
 }
 
 func ServeProxy(opts *Options) error {
+	if opts.ApiUrl == "" {
+		return errors.New("api URL is required")
+	}
+
 	p := martian.NewProxy()
 	defer p.Close()
 
@@ -43,7 +48,7 @@ func ServeProxy(opts *Options) error {
 		logrus.Error(err)
 	}
 
-	modifier, err := NewScfModifier(opts.Apis, lport)
+	modifier, err := NewScfModifier(opts.ApiUrl, opts.SecretKey, lport)
 	if err != nil {
 		return err
 	}
