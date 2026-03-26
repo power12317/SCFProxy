@@ -62,6 +62,7 @@ func Regions() []string {
 		"cn-shanghai",
 		"cn-shenzhen",
 		"cn-zhangjiakou",
+		"cn-wulanchabu",
 		"eu-central-1",
 		"eu-west-1",
 		"us-east-1",
