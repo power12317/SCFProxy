@@ -3,13 +3,18 @@ package config
 import (
 	"encoding/json"
 	"errors"
+	"net/url"
 	"os"
+	"strings"
 	"sync"
 )
 
+const HttpRecordKindFunctionURL = "function_url"
+
 type HttpRecord struct {
-	Port int    // 保留字段，用于兼容
+	Port int // 保留字段，用于兼容
 	Url  string
+	Kind string `json:",omitempty"`
 }
 
 type HttpConfig struct {
@@ -126,4 +131,17 @@ func (c *HttpConfig) ToDoubleArray() [][]string {
 		}
 	}
 	return data
+}
+
+func (r *HttpRecord) IsTencentFunctionURL() bool {
+	if r == nil || r.Kind != HttpRecordKindFunctionURL || r.Url == "" {
+		return false
+	}
+
+	u, err := url.Parse(r.Url)
+	if err != nil {
+		return false
+	}
+
+	return strings.HasSuffix(strings.ToLower(u.Hostname()), ".tencentscf.com")
 }

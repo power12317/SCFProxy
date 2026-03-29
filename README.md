@@ -38,8 +38,8 @@ When a secret key is configured:
 - All proxy requests must include the `X-SCF-Secret-Key` header with the matching secret key
 - Cloud functions will return `403 Forbidden` if the secret key doesn't match
 
-**Note**: This feature is supported on Alibaba Cloud and AWS. Tencent Cloud currently has SDK limitations that prevent
-environment variable configuration.
+**Note**: This now works on Tencent Cloud as well. `deploy http` will sync the global secret to the Tencent Cloud
+function as the `SCF_SECRET_KEY` environment variable.
 
 **Benefits**:
 - Unified access control across all cloud functions
@@ -73,6 +73,9 @@ sub users
 #### Restrictions
 
 Deployment outside of mainland China is extremely slow, so only regions in mainland China are currently supported
+
+Tencent Cloud HTTP proxy now uses Function URL. Tencent Cloud `reverse` proxy still depends on the retired API Gateway
+capability and has not been migrated to TSE Cloud Native Gateway yet.
 
 #### credentials
 
@@ -155,6 +158,9 @@ The result of the above command is
 All HTTP proxies deployed through this project will be saved in `./config/http.json` for loading when running
 the http proxy.
 
+Tencent Cloud HTTP proxy endpoints are stored as Function URLs. If your local `http.json` still contains an older
+Tencent API Gateway URL, re-run `deploy http` to migrate it and refresh the saved endpoint automatically.
+
 ### Run
 
 The first run will generate `scfproxy.cer` and `scfproxy.key` certificates in the `./config/` directory, which
@@ -182,7 +188,8 @@ scfproxy clear http -p provider_list -r region_list [--completely]
 ```
 
 The clear function only removes triggers by default, if you want to remove functions at the same time, you need to add
-the `-e/--completely` flag
+the `-e/--completely` flag. Tencent Cloud cleanup removes Function URL triggers first and also tolerates legacy API
+Gateway trigger cleanup.
 
 ## SOCKS5 proxy
 
@@ -237,7 +244,7 @@ scfproxy clear socks -p provider_list -r region_list
 
 ## Reverse proxy
 
-> **Only Tencent Cloud currently supports reverse proxy**
+> **Only Tencent Cloud currently supports reverse proxy, but the current implementation still depends on the retired API Gateway capability and does not yet work in newly provisioned Tencent Cloud environments**
 
 ### Deploy
 
@@ -331,4 +338,3 @@ The `-o origin` argument is used to locate the service to be removed
 - [ ] Optimize the code
 - [ ] Beautify the output and error handling
 - [ ] Add other cloud providers such as Huawei Cloud, GCP, Azure, etc.
-

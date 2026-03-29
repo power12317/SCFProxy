@@ -9,10 +9,11 @@ urllib3.disable_warnings()
 
 def handler(event: dict, context: dict):
     # 验证暗号
-    expected_secret = os.environ.get('SCF_SECRET_KEY', '')
+    expected_secret = os.environ.get('APP_AUTH_TOKEN', '')
     if expected_secret:
-        headers = event.get('headers', {})
-        client_secret = headers.get('X-Scf-Secret-Key', '')
+        headers = event.get('headers', {}) or {}
+        normalized_headers = {str(k).lower(): v for k, v in headers.items()}
+        client_secret = normalized_headers.get('x-scf-secret-key', '')
         if client_secret != expected_secret:
             return {
                 "isBase64Encoded": False,

@@ -197,11 +197,11 @@ func deployHttp(providers []sdk.Provider, configPath string) error {
 
 			onlyTrigger := false
 			if record, ok := conf.Get(provider, region); ok {
-				if record.Url != "" {
+				if shouldSkipHttpDeploy(provider, record) {
 					logrus.Infof("%s %s has been deployed, pass", provider, region)
 					return
 				}
-				onlyTrigger = true
+				onlyTrigger = record.Url == ""
 			}
 
 			opts := &sdk.FunctionOpts{
@@ -218,12 +218,28 @@ func deployHttp(providers []sdk.Provider, configPath string) error {
 			}
 
 			logrus.Printf("[success] http proxy deployed in %s.%s", provider, region)
-			conf.Set(provider, region, &config.HttpRecord{Port: 0, Url: api})
+			record := &config.HttpRecord{Port: 0, Url: api}
+			if provider == "tencent" {
+				record.Kind = config.HttpRecordKindFunctionURL
+			}
+			conf.Set(provider, region, record)
 		}(p)
 	}
 
 	wg.Wait()
 	return conf.Save()
+}
+
+func shouldSkipHttpDeploy(provider string, record *config.HttpRecord) bool {
+	if record == nil || record.Url == "" {
+		return false
+	}
+
+	if provider != "tencent" {
+		return true
+	}
+
+	return record.IsTencentFunctionURL()
 }
 
 func deploySocks(providers []sdk.Provider) error {

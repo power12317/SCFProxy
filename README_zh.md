@@ -42,7 +42,7 @@ secret_key = "your_secret_key_here"
 - 所有代理请求必须包含匹配的 `X-SCF-Secret-Key` 头
 - 如果暗号不匹配，云函数将返回 `403 Forbidden`
 
-**注意**：此功能在阿里云和 AWS 上支持。腾讯云目前受 SDK 限制，无法配置环境变量。
+**注意**：此功能现在也支持腾讯云，`deploy http` 会将全局暗号同步到腾讯云函数的 `SCF_SECRET_KEY` 环境变量中。
 
 **优点**：
 - 所有云函数统一访问控制
@@ -75,6 +75,8 @@ secret_key = "your_secret_key_here"
 #### 限制
 
 部署中国大陆外地区速度极慢，目前仅支持中国大陆的区域
+
+腾讯云 HTTP 代理现已改为使用函数 URL。腾讯云 `reverse` 代理仍依赖已下线的 API 网关能力，本项目暂未迁移到 TSE 云原生网关。
 
 #### 凭证
 
@@ -151,6 +153,8 @@ scfproxy deploy http -p alibaba,tencent -r ap-1,eu-*,cn-shanghai
 
 所有通过该项目部署的 HTTP 代理将会保存在 `./config/http.json` 中，用于运行 http 代理时加载。
 
+腾讯云的 HTTP 代理入口使用函数 URL。若本地 `http.json` 里仍保留 API 网关时代的旧腾讯 URL，可重新执行一次 `deploy http` 自动迁移并更新配置。
+
 ### 运行
 
 首次运行会在 `./config/` 目录生成 `scfproxy.cer` 及 `scfproxy.key` 证书，需要将其导入系统证书并信任才可以代理
@@ -175,7 +179,7 @@ HTTP 代理运行将读取 `./config/http.json` 中的记录，如果存在多�
 scfproxy clear http -p provider_list -r region_list [--completely]
 ```
 
-清理功能默认只会删除触发器，如需同时删除函数，需添加 `-e/--completely` 参数
+清理功能默认只会删除触发器，如需同时删除函数，需添加 `-e/--completely` 参数。腾讯云会优先清理函数 URL 触发器，并兼容清理旧的 API 网关触发器。
 
 ## SOCKS5 代理
 
@@ -228,7 +232,7 @@ scfproxy clear socks -p provider_list -r region_list
 
 ## 反向代理
 
-> **目前仅腾讯云支持反向代理**
+> **目前仅腾讯云支持反向代理，但当前实现仍依赖已下线的 API 网关能力，暂不兼容新的腾讯云账号环境**
 
 ### 部署
 

@@ -33,10 +33,10 @@ AccessKeySecret = ""
 `
 
 type Credential struct {
-	AccessKeyId     string
-	AccessKeySecret string
-	AccountId       string
-	RoleArn         string
+	AccessKeyId     string `toml:"AccessKeyId"`
+	AccessKeySecret string `toml:"AccessKeySecret"`
+	AccountId       string `toml:"AccountId"`
+	RoleArn         string `toml:"RoleArn"`
 }
 
 func (c Credential) isSet() bool {
@@ -44,14 +44,14 @@ func (c Credential) isSet() bool {
 }
 
 type ProviderConfig struct {
-	Global   *GlobalConfig
-	Alibaba  *Credential
-	Tencent  *Credential
-	Aws      *Credential
+	Global  *GlobalConfig `toml:"global"`
+	Alibaba *Credential   `toml:"alibaba"`
+	Tencent *Credential   `toml:"tencent"`
+	Aws     *Credential   `toml:"aws"`
 }
 
 type GlobalConfig struct {
-	SecretKey string
+	SecretKey string `toml:"secret_key"`
 }
 
 func LoadProviderConfig(path string) (*ProviderConfig, error) {
