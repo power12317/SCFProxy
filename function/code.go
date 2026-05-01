@@ -39,6 +39,20 @@ var (
 	tencentSocksCode    []byte
 	TencentSocksCodeZip = CreateZipBase64([]File{{Name: "main", Content: tencentSocksCode, HighPriv: true}})
 
+	//go:embed httpconnect/tencent/bootstrap
+	tencentHttpConnectCode []byte
+	// Tencent Custom Runtime searches for "bootstrap", while Web Function
+	// startup documentation refers to "scf_bootstrap". Ship both names so the
+	// same package works across the two Tencent SCF startup paths.
+	TencentHttpConnectCodeZip = CreateZipBase64([]File{
+		{Name: "bootstrap", Content: tencentHttpConnectCode, HighPriv: true},
+		{Name: "scf_bootstrap", Content: tencentHttpConnectCode, HighPriv: true},
+	})
+
+	//go:embed httpconnect/alibaba/bootstrap
+	alibabaHttpConnectCode    []byte
+	AlibabaHttpConnectCodeZip = CreateZipBase64([]File{{Name: "bootstrap", Content: alibabaHttpConnectCode, HighPriv: true}})
+
 	//go:embed socks/alibaba
 	alibabaSocksCode    []byte
 	AlibabaSocksCodeZip = CreateZipBase64([]File{{Name: "main", Content: alibabaSocksCode, HighPriv: true}})

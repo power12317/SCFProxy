@@ -34,12 +34,11 @@ secret_key = "your_secret_key_here"
 ```
 
 When a secret key is configured:
-- It will be passed to cloud functions as an environment variable (`SCF_SECRET_KEY`)
+- It will be passed to cloud functions using each provider's function configuration. Alibaba/AWS keep `SCF_SECRET_KEY`; Tencent uses its own supported variable name internally.
 - All proxy requests must include the `X-SCF-Secret-Key` header with the matching secret key
 - Cloud functions will return `403 Forbidden` if the secret key doesn't match
 
-**Note**: This now works on Tencent Cloud as well. `deploy http` will sync the global secret to the Tencent Cloud
-function as the `SCF_SECRET_KEY` environment variable.
+**Note**: This works on Tencent Cloud as well. `deploy http` and `deploy http-connect` sync the global secret to Tencent Cloud function configuration automatically; Alibaba Cloud `deploy http-connect` keeps using `SCF_SECRET_KEY`.
 
 **Benefits**:
 - Unified access control across all cloud functions
@@ -111,13 +110,14 @@ and then filling the corresponding role ARN into the ` sdk.toml` file.
 
 ## Query
 
-The `scfproxy list` accepts the following five parameters.
+The `scfproxy list` accepts the following parameters.
 
-* `provider` lists currently supported cloud providers and can be filtered by the `-m [http|socks|reverse]` parameter to
+* `provider` lists currently supported cloud providers and can be filtered by the `-m [http|http-connect|socks|reverse]` parameter to
   find the providers that support a certain proxy.
 * `region` list regions where cloud provider can be deployed, and the `-p providers` parameter is used to specify the
   cloud provider
 * `http` Lists deployed HTTP proxies
+* `http-connect` Lists deployed HTTP CONNECT tunnel proxies
 * `socks` Lists deployed SOCKS proxies
 * `reverse` List deployed reverse proxies
 
@@ -190,6 +190,48 @@ scfproxy clear http -p provider_list -r region_list [--completely]
 The clear function only removes triggers by default, if you want to remove functions at the same time, you need to add
 the `-e/--completely` flag. Tencent Cloud cleanup removes Function URL triggers first and also tolerates legacy API
 Gateway trigger cleanup.
+
+
+## HTTP CONNECT tunnel proxy
+
+This mode is different from the normal `http` proxy above:
+
+- `http` mode is still the existing MITM HTTP/HTTPS proxy and requires trusting the generated CA certificate for HTTPS.
+- `http-connect` mode exposes a standard local HTTP proxy that supports the `CONNECT host:port` method. The local proxy opens a WebSocket tunnel to the cloud function, and the cloud function dials the target TCP address. HTTPS traffic stays end-to-end encrypted between the client and the target server, so no local MITM certificate is needed.
+- Tencent Cloud and Alibaba Cloud are implemented for `http-connect`. Tencent uses a Custom Runtime Web Function with WebSocket enabled; Alibaba uses a Custom Runtime function behind an HTTP trigger that accepts WebSocket upgrade requests.
+
+### Deployment
+
+```console
+scfproxy deploy http-connect -p provider_list -r region_list [-c providerConfigPath]
+```
+
+Deployment records are stored in `./config/http_connect.json`.
+
+### Run
+
+```console
+scfproxy http-connect -l address
+```
+
+`-l address` is in the format `ip:port`. If multiple records are deployed, SCFProxy starts one local proxy per record using consecutive ports beginning at the provided base port.
+
+Example:
+
+```console
+scfproxy deploy http-connect -p tencent -r ap-guangzhou
+scfproxy deploy http-connect -p alibaba -r cn-shanghai
+scfproxy http-connect -l 127.0.0.1:9900
+curl -x http://127.0.0.1:9900 https://ifconfig.me
+```
+
+### Clear
+
+```console
+scfproxy clear http-connect -p provider_list -r region_list [--completely]
+```
+
+By default this removes only the cloud trigger and leaves the function in place. Add `-e/--completely` to delete the cloud function and remove the local record.
 
 ## SOCKS5 proxy
 

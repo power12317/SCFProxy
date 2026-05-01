@@ -11,6 +11,12 @@ type HttpProxyProvider interface {
 	ClearHttpProxy(*FunctionOpts) error
 }
 
+type HttpConnectProxyProvider interface {
+	Provider
+	DeployHttpConnectProxy(*HttpConnectFunctionOpts) (string, error)
+	ClearHttpConnectProxy(*HttpConnectFunctionOpts) error
+}
+
 type SocksProxyProvider interface {
 	Provider
 	DeploySocksProxy(*FunctionOpts) error
