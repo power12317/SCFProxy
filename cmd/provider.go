@@ -17,20 +17,26 @@ const (
 	HTTPFunctionName = "scf_http"
 	HTTPTriggerName  = "http_trigger"
 
+	HTTPConnectFunctionName = "scf_http_connect"
+	HTTPConnectTriggerName  = "http_connect_trigger"
+
 	SocksFunctionName = "scf_socks"
 )
 
 var (
-	allProviders     = []string{"alibaba", "tencent", "aws"}
-	httpProviders    = []string{"alibaba", "tencent", "aws", "baidu"}
-	socksProviders   = []string{"alibaba", "tencent"}
-	reverseProviders = []string{"tencent"}
+	allProviders         = []string{"alibaba", "tencent", "aws"}
+	httpProviders        = []string{"alibaba", "tencent", "aws", "baidu"}
+	httpConnectProviders = []string{"tencent", "alibaba"}
+	socksProviders       = []string{"alibaba", "tencent"}
+	reverseProviders     = []string{"tencent"}
 )
 
 func listProviders(module string) []string {
 	switch module {
 	case "http":
 		return httpProviders
+	case "http-connect":
+		return httpConnectProviders
 	case "socks":
 		return socksProviders
 	case "reverse":

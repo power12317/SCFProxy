@@ -38,11 +38,11 @@ secret_key = "your_secret_key_here"
 ```
 
 配置暗号后：
-- 它将作为环境变量 (`SCF_SECRET_KEY`) 传递给云函数
+- 它会通过各云厂商的函数配置传递给云函数。阿里云/AWS 仍使用 `SCF_SECRET_KEY`；腾讯云内部使用其支持的变量名自动写入。
 - 所有代理请求必须包含匹配的 `X-SCF-Secret-Key` 头
 - 如果暗号不匹配，云函数将返回 `403 Forbidden`
 
-**注意**：此功能现在也支持腾讯云，`deploy http` 会将全局暗号同步到腾讯云函数的 `SCF_SECRET_KEY` 环境变量中。
+**注意**：此功能现在也支持腾讯云，`deploy http` 和 `deploy http-connect` 会自动将全局暗号同步到腾讯云函数配置；阿里云 `deploy http-connect` 继续使用 `SCF_SECRET_KEY`。
 
 **优点**：
 - 所有云函数统一访问控制
@@ -111,13 +111,14 @@ AWS 需要下述凭证:
 
 ## 查询
 
-`scfproxy list` 接受以下五种参数：
+`scfproxy list` 接受以下参数：
 
-* `provider` 用于列出目前支持的云厂商，可通过 `-m [http|socks|reverse]` 参数过滤出支持某种代理的厂商。
+* `provider` 用于列出目前支持的云厂商，可通过 `-m [http|http-connect|socks|reverse]` 参数过滤出支持某种代理的厂商。
 * `region` 用于列出云厂商可部署的区域，需使用 `-p providers` 指定需要查看的云厂商
 * `http` 列出已部署的 HTTP 代理
+* `http-connect` 列出已部署的 HTTP CONNECT 隧道代理
 * `socks` 列出已部署的 SOCKS 代理
-* `reverse` 列出已部署的 反向代理
+* `reverse` 列出已部署的反向代理
 
 ## HTTP 代理
 
@@ -180,6 +181,48 @@ scfproxy clear http -p provider_list -r region_list [--completely]
 ```
 
 清理功能默认只会删除触发器，如需同时删除函数，需添加 `-e/--completely` 参数。腾讯云会优先清理函数 URL 触发器，并兼容清理旧的 API 网关触发器。
+
+
+## HTTP CONNECT 隧道代理
+
+此模式与上面的普通 `http` 代理不同：
+
+- `http` 模式仍是现有的 MITM HTTP/HTTPS 代理，代理 HTTPS 时需要信任本地生成的 CA 证书。
+- `http-connect` 模式在本地提供标准 HTTP 代理，支持 `CONNECT host:port` 方法。本地代理会通过 WebSocket 连接云函数，云函数再拨出目标 TCP 地址。HTTPS 流量仍保持客户端到目标站点的端到端加密，因此不需要本地 MITM 证书。
+- 当前已实现腾讯云和阿里云 `http-connect`。腾讯云使用启用 WebSocket 的 Custom Runtime Web 函数；阿里云使用 Custom Runtime 函数和可接受 WebSocket Upgrade 的 HTTP 触发器。
+
+### 部署
+
+```console
+scfproxy deploy http-connect -p provider_list -r region_list [-c providerConfigPath]
+```
+
+部署记录会保存在 `./config/http_connect.json`。
+
+### 运行
+
+```console
+scfproxy http-connect -l address
+```
+
+`-l address` 格式为 `ip:port`。如果部署了多条记录，SCFProxy 会从指定的基础端口开始，为每条记录按顺序启动一个本地代理端口。
+
+示例：
+
+```console
+scfproxy deploy http-connect -p tencent -r ap-guangzhou
+scfproxy deploy http-connect -p alibaba -r cn-shanghai
+scfproxy http-connect -l 127.0.0.1:9900
+curl -x http://127.0.0.1:9900 https://ifconfig.me
+```
+
+### 清理
+
+```console
+scfproxy clear http-connect -p provider_list -r region_list [--completely]
+```
+
+默认只删除云端触发器并保留函数；添加 `-e/--completely` 会删除云函数并移除本地记录。
 
 ## SOCKS5 代理
 

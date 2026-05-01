@@ -6,12 +6,13 @@ import (
 
 var (
 	// 使用程序当前目录下的 config 目录
-	CertPath           = "config/scfproxy.cer"
-	KeyPath            = "config/scfproxy.key"
-	HttpProxyPath      = "config/http.json"
-	SocksProxyPath     = "config/socks.json"
-	ReverseProxyPath   = "config/reverse.json"
-	ProviderConfigPath = "config/sdk.toml"
+	CertPath             = "config/scfproxy.cer"
+	KeyPath              = "config/scfproxy.key"
+	HttpProxyPath        = "config/http.json"
+	HttpConnectProxyPath = "config/http_connect.json"
+	SocksProxyPath       = "config/socks.json"
+	ReverseProxyPath     = "config/reverse.json"
+	ProviderConfigPath   = "config/sdk.toml"
 )
 
 func init() {

@@ -12,9 +12,9 @@ import (
 )
 
 var clearCmd = &cobra.Command{
-	Use:       "clear [http|socks|reverse] -p providers -r regions",
+	Use:       "clear [http|http-connect|socks|reverse] -p providers -r regions",
 	Short:     "Clear deployed module-specific proxies",
-	ValidArgs: []string{"http", "socks", "reverse"},
+	ValidArgs: []string{"http", "http-connect", "socks", "reverse"},
 	Args:      cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		providers, err := createProviders(cmd)
@@ -27,6 +27,8 @@ var clearCmd = &cobra.Command{
 		switch module {
 		case "http":
 			return clearHttp(providers, completely)
+		case "http-connect":
+			return clearHttpConnect(providers, completely)
 		case "socks":
 			return clearSocks(providers)
 		case "reverse":
@@ -49,7 +51,7 @@ func init() {
 	clearCmd.Flags().StringP("config", "c", config.ProviderConfigPath, "path of provider credential file")
 
 	// clear http needed
-	clearCmd.Flags().BoolP("completely", "e", false, "[http] whether to completely clear up deployed proxies (by default only delete triggers)`[http | socks]`")
+	clearCmd.Flags().BoolP("completely", "e", false, "[http|http-connect] whether to completely clear up deployed proxies (by default only delete triggers)")
 
 	// clear reverse needed
 	clearCmd.Flags().StringP("origin", "o", "", "[reverset] Address of the reverse proxy back to the source")
@@ -132,6 +134,55 @@ func clearSocks(providers []sdk.Provider) error {
 
 			conf.Delete(provider, region)
 			logrus.Printf("[success] cleared socks function in %s.%s", provider, region)
+		}(p)
+	}
+
+	wg.Wait()
+	return conf.Save()
+}
+
+func clearHttpConnect(providers []sdk.Provider, completely bool) error {
+	conf, err := config.LoadHttpConnectConfig()
+	if err != nil {
+		return err
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(len(providers))
+
+	for _, p := range providers {
+		go func(p sdk.Provider) {
+			defer wg.Done()
+			hp, ok := p.(sdk.HttpConnectProxyProvider)
+			if !ok {
+				logrus.Errorf("Provider %s can't clear http-connect", p.Name())
+				return
+			}
+			provider, region := hp.Name(), hp.Region()
+
+			if record, ok := conf.Get(provider, region); ok && record.Url == "" && !completely {
+				logrus.Infof("%s %s http-connect trigger has already been cleared", provider, region)
+				return
+			}
+
+			opts := &sdk.HttpConnectFunctionOpts{
+				Namespace:    Namespace,
+				FunctionName: HTTPConnectFunctionName,
+				TriggerName:  HTTPConnectTriggerName,
+				OnlyTrigger:  !completely,
+			}
+			if err := hp.ClearHttpConnectProxy(opts); err != nil {
+				logrus.Error(err)
+				return
+			}
+
+			if completely {
+				conf.Delete(provider, region)
+				logrus.Printf("[success] cleared http-connect function in %s.%s", provider, region)
+			} else {
+				conf.Set(provider, region, &config.HttpConnectRecord{})
+				logrus.Printf("[success] cleared http-connect trigger in %s.%s", provider, region)
+			}
 		}(p)
 	}
 

@@ -12,13 +12,13 @@ import (
 )
 
 var listCmd = &cobra.Command{
-	Use:   "list [provider|region|http|socks|reverse] [flags]",
+	Use:   "list [provider|region|http|http-connect|socks|reverse] [flags]",
 	Short: "Display all kinds of data",
 	Long: "Display all kinds of data\n" +
 		"`list provider` accepts `-m module` flag to filter out providers for a specific module\n" +
 		"`list region` accepts `-p providers` flag to specify which providers supported regions to view\n" +
 		"remain arguments like `http`, `socks`, `reverse` are used to list the proxies that are currently deployed",
-	ValidArgs: []string{"provider", "region", "http", "socks", "reverse"},
+	ValidArgs: []string{"provider", "region", "http", "http-connect", "socks", "reverse"},
 	Args:      cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		table := tablewriter.NewWriter(os.Stdout)
@@ -50,6 +50,15 @@ var listCmd = &cobra.Command{
 		case "http":
 			table.SetHeader([]string{"Provider", "Region", "Api"})
 			conf, err := config.LoadHttpConfig()
+			if err != nil {
+				return err
+			}
+			data := conf.ToDoubleArray()
+			table.AppendBulk(data)
+			table.Render()
+		case "http-connect":
+			table.SetHeader([]string{"Provider", "Region", "Api"})
+			conf, err := config.LoadHttpConnectConfig()
 			if err != nil {
 				return err
 			}

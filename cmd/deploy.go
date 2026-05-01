@@ -17,9 +17,9 @@ import (
 )
 
 var deployCmd = &cobra.Command{
-	Use:       "deploy [http|socks|reverse] -p providers -r regions",
+	Use:       "deploy [http|http-connect|socks|reverse] -p providers -r regions",
 	Short:     "Deploy module-specific proxies",
-	ValidArgs: []string{"http", "socks", "reverse"},
+	ValidArgs: []string{"http", "http-connect", "socks", "reverse"},
 	Args:      cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		providers, err := createProviders(cmd)
@@ -32,6 +32,9 @@ var deployCmd = &cobra.Command{
 		case "http":
 			configPath, _ := cmd.Flags().GetString("config")
 			return deployHttp(providers, configPath)
+		case "http-connect":
+			configPath, _ := cmd.Flags().GetString("config")
+			return deployHttpConnect(providers, configPath)
 		case "socks":
 			return deploySocks(providers)
 		case "reverse":
@@ -277,6 +280,64 @@ func deploySocks(providers []sdk.Provider) error {
 
 			logrus.Printf("[success] socks proxy deployed in %s.%s", provider, region)
 			conf.Set(sp.Name(), sp.Region())
+		}(p)
+	}
+
+	wg.Wait()
+	return conf.Save()
+}
+
+func deployHttpConnect(providers []sdk.Provider, configPath string) error {
+	conf, err := config.LoadHttpConnectConfig()
+	if err != nil {
+		return err
+	}
+
+	providerConfig, err := config.LoadProviderConfig(configPath)
+	if err != nil {
+		return err
+	}
+	secretKey := providerConfig.GetSecretKey()
+
+	var wg sync.WaitGroup
+	wg.Add(len(providers))
+
+	for _, p := range providers {
+		go func(p sdk.Provider) {
+			defer wg.Done()
+			provider, region := p.Name(), p.Region()
+			hp, ok := p.(sdk.HttpConnectProxyProvider)
+			if !ok {
+				logrus.Errorf("Provider %s can't deploy http-connect", provider)
+				return
+			}
+
+			onlyTrigger := false
+			if record, ok := conf.Get(provider, region); ok {
+				if record.Url != "" {
+					logrus.Infof("%s %s http-connect has been deployed, pass", provider, region)
+					return
+				}
+				onlyTrigger = true
+			}
+
+			opts := &sdk.HttpConnectFunctionOpts{
+				Namespace:    Namespace,
+				FunctionName: HTTPConnectFunctionName,
+				TriggerName:  HTTPConnectTriggerName,
+				OnlyTrigger:  onlyTrigger,
+				SecretKey:    secretKey,
+				Timeout:      900,
+				IdleTimeout:  600,
+			}
+			api, err := hp.DeployHttpConnectProxy(opts)
+			if err != nil {
+				logrus.Error(err)
+				return
+			}
+
+			logrus.Printf("[success] http-connect proxy deployed in %s.%s", provider, region)
+			conf.Set(provider, region, &config.HttpConnectRecord{Url: api})
 		}(p)
 	}
 
